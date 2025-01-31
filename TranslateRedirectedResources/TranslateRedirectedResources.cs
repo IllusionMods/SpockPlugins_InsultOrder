@@ -10,6 +10,17 @@ namespace TranslateRedirectedResources
     {
         static void Main(string[] args)
         {
+            var toDecompile = args.Where(File.Exists).Where(x => string.Equals(Path.GetExtension(x), ".txt", StringComparison.OrdinalIgnoreCase)).ToArray();
+            if (toDecompile.Length > 0)
+            {
+                foreach (var path in toDecompile)
+                {
+                    OriginalToCsv(path);
+                }
+
+                return;
+            }
+
             var rootFolder = Path.Combine(Environment.CurrentDirectory, "GameData/BepInEx/Translation");
             if (!Directory.Exists(rootFolder))
             {
@@ -25,8 +36,8 @@ namespace TranslateRedirectedResources
 
             string inputFolder = Path.Combine(rootFolder, "en/Text");
             string translatedFileName;
-            string outputFolder = Path.Combine(rootFolder, "en/RedirectedResources/assets/io_data/data/masterscenario.unity3d/");
-            string dumpFolder = Path.Combine(rootFolder, "en/RedirectedResources/assets/io_data/data/OriginalDump");
+            string outputFolder = Path.Combine(rootFolder, "en/RedirectedResources/assets/summerinheat_data/data/masterscenario/");
+            string dumpFolder = Path.Combine(rootFolder, "en/RedirectedResources/assets/summerinheat_data/data/OriginalDump");
 
             Dictionary<string, string> TranslationsDictionary = new Dictionary<string, string>();
             string key = "";
@@ -91,28 +102,12 @@ namespace TranslateRedirectedResources
                     groupLenght--;
 
                     //Check for useless lines
-                    if (!thisLine.Contains("CH") &&
-                        !thisLine.TrimStart().StartsWith("***") &&
-                        !thisLine.Contains("//") &&
-                        thisLine != "主人公" &&
-                        thisLine != "音瑚" &&
-                        thisLine != "兎萌" &&
-                        thisLine != "スタッフＡ" &&
-                        thisLine != "スタッフＢ" &&
-                        thisLine != "スタッフ" &&
-                        thisLine != "兎萌の夫" &&
-                        thisLine != "カップル・男" &&
-                        thisLine != "カップル・女" &&
-                        thisLine != "カップル女" &&
-                        thisLine != "客１" &&
-                        thisLine != "客２" &&
-                        thisLine != "客３" &&
-                        thisLine != "客４" &&
-                        thisLine != "客５" &&
-                        thisLine != "男１" &&
-                        thisLine != "男２" &&
-                        thisLine != "男３" &&
-                        thisLine != "" &&
+                    var thisLineTrimmed = thisLine.TrimStart();
+                    if (thisLineTrimmed != "" &&
+                        !thisLineTrimmed.StartsWith("***") &&
+                        !_CharacterNames.Contains(thisLineTrimmed) &&
+                        !thisLineTrimmed.Contains("CH") &&
+                        !thisLineTrimmed.Contains("//") &&
                         groupLenght <= 0)
                     {
                         //================= Making the key =================
@@ -166,6 +161,7 @@ namespace TranslateRedirectedResources
                             {
                                 if ((currentLenght + words[wordIndex].Length) > maxLenght && currentLine < 3)
                                 {
+                                    // TODO: Original scripts have IDSP(wide space) at start of new line if it's a part of quoted text
                                     translatedLine = translatedLine + "\n";
                                     currentLenght = 0;
                                     currentLine++;
@@ -212,7 +208,6 @@ namespace TranslateRedirectedResources
             Console.ReadLine();
         }
 
-
         static string PostTranslation(string dump, string translation)
         {
             dump = dump.Replace("「", "『");
@@ -233,5 +228,98 @@ namespace TranslateRedirectedResources
 
             return translation;
         }
+
+        private static void OriginalToCsv(string path)
+        {
+            var lines = File.ReadAllLines(path);
+
+            using (var writer = new StreamWriter(Path.ChangeExtension(path, ".csv"), false, Encoding.UTF8))
+            {
+                writer.WriteLine("Character,Text");
+
+                // Turn the original script into a CSV file for translation
+                // The CSV will have the character name in first column (if available), and the combined text in the second column
+                // Non-dialogue lines will be ignored
+                var currentCharacter = "";
+                for (var i = 0; i < lines.Length; i++)
+                {
+                    var line = lines[i].Trim();
+                    if (IsDialogBreak(line))
+                    {
+                        currentCharacter = "";
+                        continue;
+                    }
+
+                    var isCharacterLine = _CharacterNames.Contains(line) || line.Contains("CH");
+
+                    if (isCharacterLine)
+                    {
+                        currentCharacter = line;
+                        continue;
+                    }
+
+                    // Combine dialog lines
+                    var combined = lines[i];
+                    i++;
+                    while (i < lines.Length)
+                    {
+                        line = lines[i].Trim();
+                        if (IsDialogBreak(line))
+                        {
+                            --i;
+                            break;
+                        }
+
+                        combined += line;
+                        i++;
+                    }
+
+                    var csvLine = $"\"{currentCharacter}\",\"{combined}\"";
+
+                    writer.WriteLine(csvLine);
+                }
+            }
+        }
+
+        private static bool IsDialogBreak(string line)
+        {
+            return line.StartsWith("***") || line.Contains("//") || string.IsNullOrEmpty(line);
+        }
+
+        private static readonly HashSet<string> _CharacterNames = new HashSet<string>
+        {
+            "小鳥遊",
+            "乙羽",
+            "小鳥遊 乙羽",
+            "小鳥遊 乙羽（回想）",
+            "小鳥遊 乙羽（独白）",
+            "暁",
+            "莉乃",
+            "暁 莉乃",
+            "暁 莉乃（独白）",
+            "麗子",
+            "小鳥遊 麗子",
+            "小鳥遊 麗子（独白）",
+            "田中",
+            "心々愛",
+            "田中 心々愛",
+            "田中 心々愛（独白）",
+            "回想",
+            "独白",
+            "主人公",
+            "茂部",
+            "たかし",
+            "？？？",
+            "教師",
+            "校長",
+            "隣の男子生徒",
+            "女子部員Ａ",
+            "女子部員Ｂ",
+            "女子部員Ｃ",
+            "女子部員Ｄ",
+            "女子部員Ｅ",
+            "友人Ａ",
+            "友人Ｂ",
+        };
     }
 }
