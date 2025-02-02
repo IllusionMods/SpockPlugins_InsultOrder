@@ -10,14 +10,14 @@ namespace TranslateRedirectedResources
     {
         static void Main(string[] args)
         {
-            var toDecompile = args.Where(File.Exists).Where(x => string.Equals(Path.GetExtension(x), ".txt", StringComparison.OrdinalIgnoreCase)).ToArray();
+            var toDecompile = args.Where(File.Exists).Where(x => string.Equals(Path.GetExtension(x), ".txt", StringComparison.OrdinalIgnoreCase)).Select(Path.GetFullPath).ToArray();
             if (toDecompile.Length > 0)
             {
-                foreach (var path in toDecompile)
+                using (var writer = new StreamWriter(Path.Combine(Path.GetDirectoryName(toDecompile[0]) ?? throw new Exception("How? " + toDecompile[0]), "_LineDump-orig"), false, Encoding.UTF8))
                 {
-                    OriginalToCsv(path);
+                    foreach (var path in toDecompile)
+                        OriginalToCsv(path, writer);
                 }
-
                 return;
             }
 
@@ -80,6 +80,10 @@ namespace TranslateRedirectedResources
             {
 
                 string thisFile = fileNames[fileIndex];
+
+                if (!string.Equals(Path.GetExtension(thisFile), ".txt", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
                 string[] dumpedFile = File.ReadAllLines(thisFile);
                 string[] outputFile = new string[dumpedFile.Length];
 
@@ -105,7 +109,7 @@ namespace TranslateRedirectedResources
                     var thisLineTrimmed = thisLine.TrimStart();
                     if (thisLineTrimmed != "" &&
                         !thisLineTrimmed.StartsWith("***") &&
-                        !_CharacterNames.Contains(thisLineTrimmed) &&
+                        !_CharacterNames.ContainsKey(thisLineTrimmed) &&
                         !thisLineTrimmed.Contains("CH") &&
                         !thisLineTrimmed.Contains("//") &&
                         groupLenght <= 0)
@@ -187,7 +191,18 @@ namespace TranslateRedirectedResources
                     {
                         if (groupLenght <= 0 || !TranslationsDictionary.ContainsKey(key))
                         {
-                            outputFile[currentIndex] = dumpedFile[dumpPos];
+                            var line = dumpedFile[dumpPos];
+
+                            if (!thisLineTrimmed.StartsWith("***") &&
+                                !thisLineTrimmed.Contains("//"))
+                            {
+                                foreach (var characterName in _CharacterNames.OrderByDescending(x => x.Key.Length))
+                                {
+                                    line = line.Replace(characterName.Key, characterName.Value);
+                                }
+                            }
+
+                            outputFile[currentIndex] = line;
                             currentIndex++;
                         }
                     }
@@ -229,7 +244,7 @@ namespace TranslateRedirectedResources
             return translation;
         }
 
-        private static void OriginalToCsv(string path)
+        private static void OriginalToCsv(string path, StreamWriter globalWriter)
         {
             var lines = File.ReadAllLines(path);
 
@@ -250,7 +265,7 @@ namespace TranslateRedirectedResources
                         continue;
                     }
 
-                    var isCharacterLine = _CharacterNames.Contains(line) || line.Contains("CH");
+                    var isCharacterLine = _CharacterNames.ContainsKey(line) || line.Contains("CH");
 
                     if (isCharacterLine)
                     {
@@ -277,6 +292,7 @@ namespace TranslateRedirectedResources
                     var csvLine = $"\"{currentCharacter}\",\"{combined}\"";
 
                     writer.WriteLine(csvLine);
+                    globalWriter.WriteLine(combined);
                 }
             }
         }
@@ -286,40 +302,40 @@ namespace TranslateRedirectedResources
             return line.StartsWith("***") || line.Contains("//") || string.IsNullOrEmpty(line);
         }
 
-        private static readonly HashSet<string> _CharacterNames = new HashSet<string>
+        private static readonly Dictionary<string, string> _CharacterNames = new Dictionary<string, string>
         {
-            "小鳥遊",
-            "乙羽",
-            "小鳥遊 乙羽",
-            "小鳥遊 乙羽（回想）",
-            "小鳥遊 乙羽（独白）",
-            "暁",
-            "莉乃",
-            "暁 莉乃",
-            "暁 莉乃（独白）",
-            "麗子",
-            "小鳥遊 麗子",
-            "小鳥遊 麗子（独白）",
-            "田中",
-            "心々愛",
-            "田中 心々愛",
-            "田中 心々愛（独白）",
-            "回想",
-            "独白",
-            "主人公",
-            "茂部",
-            "たかし",
-            "？？？",
-            "教師",
-            "校長",
-            "隣の男子生徒",
-            "女子部員Ａ",
-            "女子部員Ｂ",
-            "女子部員Ｃ",
-            "女子部員Ｄ",
-            "女子部員Ｅ",
-            "友人Ａ",
-            "友人Ｂ",
+            { "小鳥遊",        "Takanashi" }   ,
+            { "乙羽",             "Otoha" }   ,
+            { "小鳥遊 乙羽",       "Takanashi Otoha"}    ,
+            { "小鳥遊 乙羽（回想）","Takanashi Otoha (Recollection)" }   ,
+            { "小鳥遊 乙羽（独白）","Takanashi Otoha (Monologue)" }   ,
+            { "暁",              "Akatsuki" }   ,
+            { "莉乃",             "Rino" }   ,
+            { "暁 莉乃",          "Akatsuki Rino" }   ,
+            { "暁 莉乃（独白）",   "Akatsuki Rino (Monologue)" }   ,
+            { "麗子",             "Reiko" }   ,
+            { "小鳥遊 麗子",       "Takanashi Reiko"}    ,
+            { "小鳥遊 麗子（独白）","Takanashi Reiko (Monologue)" }   ,
+            { "田中",             "Tanaka" }   ,
+            { "心々愛",           "Cocoa" }   ,
+            { "田中 心々愛",       "Tanaka Cocoa"}    ,
+            { "田中 心々愛（独白）","Tanaka Cocoa (Monologue)" }   ,
+            { "回想",             "Recollection" }   ,
+            { "独白",             "Monologue" }   ,
+            { "主人公",           "Hero" }   ,
+            { "茂部",             "Mobu" }   ,
+            { "たかし",           "Takashi" }   ,
+            { "？？？",           "???" }   ,
+            { "教師",             "Teacher" }   ,
+            { "校長",             "Principal" }   ,
+            { "隣の男子生徒",      "Male student from next door" }   ,
+            { "女子部員Ａ",        "Female member A"}    ,
+            { "女子部員Ｂ",        "Female member B"}    ,
+            { "女子部員Ｃ",        "Female member C"}    ,
+            { "女子部員Ｄ",        "Female member D"}    ,
+            { "女子部員Ｅ",        "Female member E"}    ,
+            { "友人Ａ",           "Friend A" }   ,
+            { "友人Ｂ",           "Friend B" }   ,
         };
     }
 }

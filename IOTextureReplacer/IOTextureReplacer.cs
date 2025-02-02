@@ -15,8 +15,8 @@ namespace IOTextureReplacer
     {
         public const string Version = "0.1.1";
 
-        public string imagesPath { get; set; } = @"BepInEx/Plugins/IOTextureReplacer/images";
-        public string imagesDumpPath { get; set; } = @"BepInEx/Plugins/IOTextureReplacer/imageDump";
+        public string imagesPath { get; set; } = Path.Combine(Paths.PluginPath, "IOTextureReplacer/images");
+        public string imagesDumpPath { get; set; } = Path.Combine(Paths.PluginPath, "IOTextureReplacer/imageDump");
 
         private Dictionary<string, string> images;
         private ConfigEntry<KeyboardShortcut> _dumpHotkey;
@@ -31,9 +31,9 @@ namespace IOTextureReplacer
             replaceImages();
         }
 
-        public void OnGUI()
+        public void LateUpdate()
         {
-            if (_dumpHotkey.Value.IsUp())
+            if (_dumpHotkey.Value.IsDown())
             {
                 Logger.Log(LogLevel.Debug, "Dumping Images..." + Environment.NewLine);
                 try
