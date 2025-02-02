@@ -212,8 +212,10 @@ namespace TranslateRedirectedResources
                             {
                                 if ((currentLenght + words[wordIndex].Length) > maxLenght && currentLine < 3)
                                 {
-                                    // TODO: Original scripts have IDSP(wide space) at start of new line if it's a part of quoted text
-                                    translatedLine = translatedLine + "\n";
+                                    translatedLine += "\n";
+                                    // Original scripts have IDSP(wide space) at start of new line if it's a part of quoted text
+                                    if (key.Contains("『")) 
+                                        translatedLine += "\u3000";
                                     currentLenght = 0;
                                     currentLine++;
                                 }
@@ -272,6 +274,8 @@ namespace TranslateRedirectedResources
                 var contents = string.Join("\n", outputFile);
                 // Remove excessive newlines, keep at most 3 in a row
                 contents = Regex.Replace(contents, "\n\n\n\n+", "\n\n\n");
+                // Ensure all newlines are \r\n
+                contents = contents.Replace("\r\n", "\n").Replace("\n", "\r\n");
                 File.WriteAllText(filePath, contents);
             }
 
