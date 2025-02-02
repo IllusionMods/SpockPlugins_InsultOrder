@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.IO;
+using System.Text.RegularExpressions;
 
 namespace TranslateRedirectedResources
 {
@@ -10,29 +12,70 @@ namespace TranslateRedirectedResources
     {
         static void Main(string[] args)
         {
-            var toDecompile = args.Where(File.Exists).Where(x => string.Equals(Path.GetExtension(x), ".txt", StringComparison.OrdinalIgnoreCase)).Select(Path.GetFullPath).ToArray();
-            if (toDecompile.Length > 0)
-            {
-                using (var writer = new StreamWriter(Path.Combine(Path.GetDirectoryName(toDecompile[0]) ?? throw new Exception("How? " + toDecompile[0]), "_LineDump-orig"), false, Encoding.UTF8))
-                {
-                    foreach (var path in toDecompile)
-                        OriginalToCsv(path, writer);
-                }
-                return;
-            }
+            Console.OutputEncoding = Encoding.UTF8;
 
-            var rootFolder = Path.Combine(Environment.CurrentDirectory, "GameData/BepInEx/Translation");
-            if (!Directory.Exists(rootFolder))
+            try
             {
-                // Allow running directly on the IO_Translation repo
-                rootFolder = Path.Combine(Environment.CurrentDirectory, "Translation");
-                if (!Directory.Exists(rootFolder))
+                var toDecompile = args.Where(File.Exists).Where(x => string.Equals(Path.GetExtension(x), ".txt", StringComparison.OrdinalIgnoreCase)).Select(Path.GetFullPath).ToArray();
+                if (toDecompile.Length > 0)
                 {
-                    Console.WriteLine("Cold not find the Translation folder! Place this next to the GameData or the Translation folder.");
-                    Console.ReadLine();
+                    using (var writer = new StreamWriter(Path.Combine(Path.GetDirectoryName(toDecompile[0]) ?? throw new Exception("How? " + toDecompile[0]), "_LineDump-orig"), false, Encoding.UTF8))
+                    {
+                        foreach (var path in toDecompile)
+                            OriginalToCsv(path, writer);
+                    }
                     return;
                 }
             }
+            catch (Exception e)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("Crashed! The extracted files are likely to be bad!\n" + e);
+                Console.ForegroundColor = ConsoleColor.White;
+                return;
+            }
+
+            string rootFolder;
+            try
+            {
+                rootFolder = args.FirstOrDefault(x => string.Equals(Path.GetFileName(x), "Translation", StringComparison.OrdinalIgnoreCase) && Directory.Exists(x));
+                if (rootFolder == null)
+                {
+                    rootFolder = Path.Combine(Environment.CurrentDirectory, "GameData/BepInEx/Translation");
+                    if (!Directory.Exists(rootFolder))
+                    {
+                        // Allow running directly on the IO_Translation repo
+                        rootFolder = Path.Combine(Environment.CurrentDirectory, "Translation");
+                        if (!Directory.Exists(rootFolder))
+                            throw new Exception("Cold not find the Translation folder! Place this next to the GameData or the Translation folder!");
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("Failed to get Translation folder! " + e.Message);
+                Console.ForegroundColor = ConsoleColor.White;
+                return;
+            }
+
+            try
+            {
+                ApplyTranslationsToDump(rootFolder);
+            }
+            catch (Exception e)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("Crashed! The dump may be partially translated in the output directory!\n" + e);
+                Console.ForegroundColor = ConsoleColor.White;
+                return;
+            }
+        }
+
+        private static void ApplyTranslationsToDump(string rootFolder)
+        {
+            var sw = Stopwatch.StartNew();
+            int hitsTl = 0, hitsDump = 0, missDump = 0;
 
             string inputFolder = Path.Combine(rootFolder, "en/Text");
             string translatedFileName;
@@ -40,7 +83,6 @@ namespace TranslateRedirectedResources
             string dumpFolder = Path.Combine(rootFolder, "en/RedirectedResources/assets/summerinheat_data/data/OriginalDump");
 
             Dictionary<string, string> TranslationsDictionary = new Dictionary<string, string>();
-            string key = "";
             string value;
 
             string[] fileNames = Directory.GetFiles(dumpFolder);
@@ -56,23 +98,26 @@ namespace TranslateRedirectedResources
                     string[] translatedFile = File.ReadAllLines(translatedFileName);
                     foreach (string line in translatedFile)
                     {
-                        if (!line.StartsWith("//"))
+                        if (line.StartsWith("//")) continue;
+
+                        string[] parts = line.Split(new char[] { '=' }, 2, StringSplitOptions.None);
+                        if (parts.Length == 2)
                         {
-                            string[] parts = line.Split('=');
-                            if (parts.Length == 2)
-                            {
-                                key = parts[0].Replace("\\n　", "");
-                                key = key.Replace("\\n ", "");
-                                key = key.Replace("\\n", "");
-                                value = parts[1];
-                                if (!TranslationsDictionary.ContainsKey(key))
-                                    TranslationsDictionary.Add(key, value);
-                            }
+                            hitsTl++;
+
+                            var key = parts[0].Replace("\\n　", "");
+                            key = key.Replace("\\n ", "");
+                            key = key.Replace("\\n", "");
+                            key = key.Replace("\"", "");
+                            key = key.Replace("「", "『");
+                            key = key.Replace("」", "』");
+                            value = parts[1];
+                            if (!TranslationsDictionary.ContainsKey(key))
+                                TranslationsDictionary.Add(key, value);
                         }
                     }
                 }
             }
-
 
 
             //======================================== Translating Dumped Files ============================================
@@ -96,6 +141,7 @@ namespace TranslateRedirectedResources
                 string thisLine;
                 string nextLine;
                 string translatedLine;
+                string key = "";
 
                 for (int dumpPos = 0; dumpPos < dumpedFile.Length - 1; dumpPos++)
                 {
@@ -119,7 +165,7 @@ namespace TranslateRedirectedResources
 
                         // Treating Group of Lines
                         // Making the key the same as translated file, and also defining the lenght of the group of lines
-                        if (thisLine != "" && nextLine != "" && !nextLine.Contains("//"))
+                        if (thisLine != "" && nextLine != "" && !nextLine.Contains("//") && !nextLine.StartsWith("***"))
                         {
                             groupLenght = 1;
                             bool groupEnd = false;
@@ -133,13 +179,14 @@ namespace TranslateRedirectedResources
                                 groupLenght++;
 
                                 nextIndex = dumpPos + groupLenght;
-                                if (dumpedFile[nextIndex] == "" || dumpedFile[nextIndex].StartsWith("//"))
+                                if (dumpedFile[nextIndex] == "" || dumpedFile[nextIndex].StartsWith("//") || dumpedFile[nextIndex].StartsWith("***"))
                                     groupEnd = true;
                             }
                         }
 
                         key = key.Replace("「", "『");
                         key = key.Replace("」", "』");
+                        key = key.Replace("\"", "");
 
                         //Translating lines found with the key
                         if (TranslationsDictionary.ContainsKey(key))
@@ -178,12 +225,19 @@ namespace TranslateRedirectedResources
                             translatedLine = PostTranslation(dumpedFile[dumpPos], translatedLine);
                             outputFile[currentIndex] = translatedLine;
                             currentIndex++;
+
+                            hitsDump++;
                         }
                         //if current line was not found in the dictionary, just copy
                         else
                         {
                             outputFile[currentIndex] = dumpedFile[dumpPos];
                             currentIndex++;
+
+                            Console.ForegroundColor = ConsoleColor.Yellow;
+                            Console.WriteLine("Translation miss: " + key);
+                            Console.ForegroundColor = ConsoleColor.White;
+                            missDump++;
                         }
                     }
                     //if current line is not a useful line, just copy
@@ -215,12 +269,19 @@ namespace TranslateRedirectedResources
 
                 //Finally, writing the file!
                 string filePath = outputFolder + Path.GetFileName(thisFile);
-                File.WriteAllText(filePath, string.Join("\n", outputFile));
+                var contents = string.Join("\n", outputFile);
+                // Remove excessive newlines, keep at most 3 in a row
+                contents = Regex.Replace(contents, "\n\n\n\n+", "\n\n\n");
+                File.WriteAllText(filePath, contents);
             }
 
             //Exit dialogue
-            Console.WriteLine("Done, press enter to exit");
-            Console.ReadLine();
+            //Console.WriteLine("Done, press enter to exit");
+            //Console.ReadLine();
+
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine($"Finished in {sw.ElapsedMilliseconds}ms! Got {hitsTl} translated lines from {inputFileNames.Length} translation files. Replaced {hitsDump} dialog lines in dump ({missDump} failed).");
+            Console.ForegroundColor = ConsoleColor.White;
         }
 
         static string PostTranslation(string dump, string translation)
@@ -231,14 +292,9 @@ namespace TranslateRedirectedResources
 
             if (dump.Contains("『"))
             {
-                if (translation.StartsWith("\""))
-                    translation = translation.TrimStart('"');
-                translation = "『" + translation;
-                if (translation.EndsWith("\""))
-                    translation = translation.TrimEnd('"');
-                if (translation.EndsWith("”"))
-                    translation = translation.TrimEnd('”');
-                translation = translation + "』";
+                translation = translation.TrimStart('"', '“', '”');
+                translation = translation.TrimEnd('"', '“', '”');
+                translation = "『" + translation + "』";
             }
 
             return translation;
