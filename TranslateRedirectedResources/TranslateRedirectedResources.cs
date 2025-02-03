@@ -249,14 +249,15 @@ namespace TranslateRedirectedResources
                         {
                             var line = dumpedFile[dumpPos];
 
-                            if (!thisLineTrimmed.StartsWith("***") &&
-                                !thisLineTrimmed.Contains("//"))
-                            {
-                                foreach (var characterName in _CharacterNames.OrderByDescending(x => x.Key.Length))
-                                {
-                                    line = line.Replace(characterName.Key, characterName.Value);
-                                }
-                            }
+                            // Replace character names - disabled because it breaks Cocoa If route, possibly others
+                            //if (!thisLineTrimmed.StartsWith("***") &&
+                            //    !thisLineTrimmed.Contains("//"))
+                            //{
+                            //    foreach (var characterName in _CharacterNames.OrderByDescending(x => x.Key.Length))
+                            //    {
+                            //        line = line.Replace(characterName.Key, characterName.Value);
+                            //    }
+                            //}
 
                             outputFile[currentIndex] = line;
                             currentIndex++;

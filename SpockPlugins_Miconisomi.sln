@@ -21,8 +21,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TranslateRedirectedResource
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IO_MirrorResolution", "IO_MirrorResolution\IO_MirrorResolution.csproj", "{5795BE28-0025-4D88-8C81-E3525BD885BD}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SiH_Uncensor", "SiH_Uncensor\SiH_Uncensor.csproj", "{77EE0D78-C437-4584-B014-0FC1B0318423}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -65,10 +63,6 @@ Global
 		{5795BE28-0025-4D88-8C81-E3525BD885BD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5795BE28-0025-4D88-8C81-E3525BD885BD}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5795BE28-0025-4D88-8C81-E3525BD885BD}.Release|Any CPU.Build.0 = Release|Any CPU
-		{77EE0D78-C437-4584-B014-0FC1B0318423}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{77EE0D78-C437-4584-B014-0FC1B0318423}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{77EE0D78-C437-4584-B014-0FC1B0318423}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{77EE0D78-C437-4584-B014-0FC1B0318423}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
