@@ -1,4 +1,4 @@
-﻿using BepInEx;
+using BepInEx;
 using HarmonyLib;
 using UnityEngine;
 
@@ -26,9 +26,10 @@ namespace IO_Demosaic
 
         // Disabling Mosaic Object in Characters
         [HarmonyPostfix, HarmonyPatch(typeof(MozaicSetUp), "Start")]
-        private static void CharacterDemosaic(Renderer ___MozaObj)
+        private static void CharacterDemosaic(Renderer ___MozaObj, MozaicSetUp __instance)
         {
-            ___MozaObj.enabled=false;
+            ___MozaObj.enabled = false;
+            __instance.enabled = false;
         }
 
         // Disabling Mosaic Object in X-ray window
