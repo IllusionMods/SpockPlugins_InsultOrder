@@ -9,7 +9,7 @@ namespace IO_Demosaic
     public class IO_Demosaic : BaseUnityPlugin
     {
         // Set version in BepInEx and in AssemblyInfo
-        public const string Version = "1.2";
+        public const string Version = "1.1";
         public IO_Demosaic()
         {
             // Patch Everything
