@@ -17,7 +17,7 @@ An English version of the Insult Order launcher made to look as close as possibl
 ## IO_Demosaic
 Removes the mosaic censor from characters in **Insult Order**. Small footprint version.
 
-**V1.1 - [Download](https://github.com/SpockBauru/SpockPlugins_Miconisomi/releases/tag/r3)**
+**V1.2 - [Download](https://github.com/IllusionMods/SpockPlugins_InsultOrder/releases/tag/r11)**
 
 ## IO_MirrorResolution
 Lets you choose the resolution of the mirror. From potato PC up to 4k! Options are available in Configuration Manager. Use anal position to see the difference. Plugin inspired by [MeidoDev's BetterMirror](https://github.com/MeidoDev/io-plugins)
